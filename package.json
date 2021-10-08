@@ -1,0 +1,16 @@
+{
+  "name": "croptool",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "budo index.js --live"
+  },
+  "keywords": [],
+  "author": "David Guttman <david@guttman.io> (http://davidguttman.com/)",
+  "license": "MIT",
+  "dependencies": {
+    "budo": "^11.6.4",
+    "nanohtml": "^1.9.1"
+  }
+}
