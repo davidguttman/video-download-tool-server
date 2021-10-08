@@ -4,16 +4,21 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "budo index.js --live"
+    "start": "npm run start-server & npm run start-client",
+    "start-server": "nodemon server.js",
+    "start-client": "budo index.js --live"
   },
   "keywords": [],
   "author": "David Guttman <david@guttman.io> (http://davidguttman.com/)",
   "license": "MIT",
   "dependencies": {
     "budo": "^11.6.4",
+    "cors": "^2.8.5",
+    "express": "^4.17.1",
     "lerp": "^1.0.3",
     "linmap": "^1.0.0",
     "nanohtml": "^1.9.1",
+    "nodemon": "^2.0.13",
     "standard": "^16.0.4"
   }
 }

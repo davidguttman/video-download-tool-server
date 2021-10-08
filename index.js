@@ -3,6 +3,7 @@ const linmap = require('linmap')
 
 const state = {
   filename: '',
+  url: '',
   cropMode: false,
   cropStartX: 0,
   cropStartY: 0,
@@ -17,6 +18,11 @@ const textarea = html`<textarea style='width: 100%; height: 200px'></textarea>`
 
 const el = html`
   <body>
+
+    <div>
+      <input type="text" onchange=${onYTUrlChange}></input>
+    </div>
+
     <div>
       <label>
         Choose video: <input type="file" onchange=${onFile}>
@@ -29,7 +35,7 @@ const el = html`
       <button onclick=${toggleCrop}>Crop</button>
     </div>
 
-    <div style='width: 80%; position: relative;'>
+    <div style='width: 100%; position: relative;'>
       ${cropMarker}
       ${video}
     </div>
@@ -46,9 +52,33 @@ video.addEventListener('mousedown', cropStart)
 video.addEventListener('mouseup', cropEnd)
 video.addEventListener('mousemove', cropUpdate)
 
+function onYTUrlChange (evt) {
+  // video.src = `//localhost:3000/video?ytUrl=${encodeURIComponent(evt.target.value)}`
+  // video.load()
+  // video.play()
+  // video.style.display = 'block'
+
+  const urlMeta = `//localhost:3000/video?ytUrl=${encodeURIComponent(evt.target.value)}`
+  window.fetch(urlMeta)
+    .then(res => res.json())
+    .then(data => onMeta(data))
+
+  function onMeta (meta) {
+    console.log('meta', meta)
+    state.title = meta.title
+    state.url = meta.url
+
+    video.src = state.url
+    video.load()
+    video.play()
+    video.style.display = 'block'
+  }
+}
+
 function updateOutput () {
   textarea.value = outputCommand({
-    title: state.filename,
+    url: state.url,
+    title: state.title,
     timeStart: toTimeStr(state.secsStart),
     duration: toTimeStr((state.secsEnd || video.duration) - state.secsStart),
     width: state.crop.width,
@@ -60,7 +90,7 @@ function updateOutput () {
 
 function onFile (evt) {
   const file = evt.target.files[0]
-  state.filename = file.name
+  state.title = file.name
 
   video.src = URL.createObjectURL(file)
   video.load()
@@ -123,13 +153,13 @@ function cropUpdate (evt) {
 }
 
 function outputCommand (opts) {
-  const { title, timeStart, duration, width, height, xOffset, yOffset } = opts
+  const { url, title, timeStart, duration, width, height, xOffset, yOffset } = opts
 
   const args = [
     '-ss',
     timeStart,
     '-i',
-    `"${title}"`,
+    `"${url}"`,
     '-filter:a',
     'volume=0.10',
     '-filter:v',
@@ -149,7 +179,7 @@ function outputCommand (opts) {
 function toTimeStr (secs) {
   const hours = Math.floor(secs / 3600)
   const minutes = Math.floor(secs / 60 - hours * 60)
-  const seconds = Math.floor(secs - minutes * 60)
+  const seconds = Math.floor(secs - (minutes * 60) - (hours * 3600))
 
   return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`
 }
