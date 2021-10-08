@@ -150,29 +150,10 @@ function toTimeStr (secs) {
   const hours = Math.floor(secs / 3600)
   const minutes = Math.floor(secs / 60 - hours * 60)
   const seconds = Math.floor(secs - minutes * 60)
-  let hourValue
-  let minuteValue
-  let secondValue
 
-  if (hours < 10) {
-    hourValue = '0' + hours
-  } else {
-    hourValue = hours
-  }
+  return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`
+}
 
-  if (minutes < 10) {
-    minuteValue = '0' + minutes
-  } else {
-    minuteValue = minutes
-  }
-
-  if (seconds < 10) {
-    secondValue = '0' + seconds
-  } else {
-    secondValue = seconds
-  }
-
-  const mediaTime = hourValue + ':' + minuteValue + ':' + secondValue
-
-  return mediaTime
+function pad (n) {
+  return n < 10 ? '0' + n : n
 }
