@@ -14,6 +14,7 @@
   "dependencies": {
     "budo": "^11.6.4",
     "cors": "^2.8.5",
+    "debug": "^4.3.2",
     "express": "^4.17.1",
     "lerp": "^1.0.3",
     "linmap": "^1.0.0",

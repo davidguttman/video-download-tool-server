@@ -15,12 +15,13 @@ const state = {
 const video = html`<video style='display: none; width: 100%' controls></video>`
 const cropMarker = html`<div style='position: absolute; z-index: 999; opacity: 0.5; background: #f0f; pointer-events: none'></div>`
 const textarea = html`<textarea style='width: 100%; height: 200px'></textarea>`
+const downloadButton = html`<button style='display: none'></button>`
 
 const el = html`
   <body>
 
     <div>
-      <input type="text" onchange=${onYTUrlChange}></input>
+      <input type="text" style='width: 100%' onchange=${onYTUrlChange}></input>
     </div>
 
     <div>
@@ -33,6 +34,7 @@ const el = html`
       <button onclick=${setStart}>Set Start Time</button>
       <button onclick=${setEnd}>Set End Time</button>
       <button onclick=${toggleCrop}>Crop</button>
+      ${downloadButton}
     </div>
 
     <div style='width: 100%; position: relative;'>
@@ -76,7 +78,7 @@ function onYTUrlChange (evt) {
 }
 
 function updateOutput () {
-  textarea.value = outputCommand({
+  const opts = {
     url: state.url,
     title: state.title,
     timeStart: toTimeStr(state.secsStart),
@@ -85,7 +87,13 @@ function updateOutput () {
     height: state.crop.height,
     xOffset: state.crop.xOffset,
     yOffset: state.crop.yOffset
-  })
+  }
+
+  textarea.value = 'ffmpeg ' + outputArgs(opts).join(' ')
+
+  opts.stream = true
+  downloadButton.innerHTML = `<a href='//localhost:3000/ffmpeg?filename=${encodeURIComponent(state.title + '.mp4')}&args=${encodeURIComponent(outputArgs(opts).join(','))}'>Download</a>`
+  downloadButton.style.display = 'inline'
 }
 
 function onFile (evt) {
@@ -152,14 +160,14 @@ function cropUpdate (evt) {
   cropMarker.style.height = state.cropHeight + 'px'
 }
 
-function outputCommand (opts) {
-  const { url, title, timeStart, duration, width, height, xOffset, yOffset } = opts
+function outputArgs (opts) {
+  const { url, title, timeStart, duration, width, height, xOffset, yOffset, stream } = opts
 
   const args = [
     '-ss',
     timeStart,
     '-i',
-    `"${url}"`,
+    stream ? `${url}` : `"${url}"`,
     '-filter:a',
     'volume=0.10',
     '-filter:v',
@@ -169,11 +177,20 @@ function outputCommand (opts) {
     '-c:a',
     'aac',
     '-b:a',
-    '192k',
-    `"${title}-cropped.mp4"`
+    '192k'
   ]
 
-  return `ffmpeg ${args.join(' ')}`
+  if (stream) {
+    args.push('-movflags')
+    args.push('frag_keyframe+empty_moov')
+    args.push('-f')
+    args.push('mp4')
+    args.push('pipe:1')
+  } else {
+    args.push(`"${title}-cropped.mp4"`)
+  }
+
+  return args
 }
 
 function toTimeStr (secs) {
