@@ -1,17 +1,21 @@
-var html = require('nanohtml')
+const html = require('nanohtml')
+const linmap = require('linmap')
 
-var state = {
+const state = {
+  filename: '',
   cropMode: false,
   cropStartX: 0,
   cropStartY: 0,
   cropWidth: 0,
-  cropHeight: 0
+  cropHeight: 0,
+  crop: {}
 }
 
-var video = html`<video style='width: 100%' controls></video>`
-var cropMarker = html`<div style='position: absolute; z-index: 999; opacity: 0.5; background: #f0f; pointer-events: none'></div>`
+const video = html`<video style='display: none; width: 100%' controls></video>`
+const cropMarker = html`<div style='position: absolute; z-index: 999; opacity: 0.5; background: #f0f; pointer-events: none'></div>`
+const textarea = html`<textarea style='width: 100%; height: 200px'></textarea>`
 
-var el = html`
+const el = html`
   <body>
     <div>
       <label>
@@ -29,6 +33,10 @@ var el = html`
       ${cropMarker}
       ${video}
     </div>
+
+    <div>
+      ${textarea}
+    </div>
   </body>
 `
 
@@ -38,12 +46,25 @@ video.addEventListener('mousedown', cropStart)
 video.addEventListener('mouseup', cropEnd)
 video.addEventListener('mousemove', cropUpdate)
 
+function updateOutput () {
+  textarea.value = outputCommand({
+    title: state.filename,
+    timeStart: toTimeStr(state.secsStart),
+    duration: toTimeStr((state.secsEnd || video.duration) - state.secsStart),
+    width: state.crop.width,
+    height: state.crop.height,
+    xOffset: state.crop.xOffset,
+    yOffset: state.crop.yOffset
+  })
+}
+
 function onFile (evt) {
   const file = evt.target.files[0]
-  const filename = file.name
+  state.filename = file.name
 
   video.src = URL.createObjectURL(file)
   video.load()
+  video.style.display = 'block'
 }
 
 function toggleCrop () {
@@ -51,17 +72,22 @@ function toggleCrop () {
 }
 
 function setStart () {
+  state.secsStart = video.currentTime
   console.log('video.currentTime', toTimeStr(video.currentTime))
   console.log('video.duration', toTimeStr(video.duration))
+  updateOutput()
 }
 
-function setEnd () {}
+function setEnd () {
+  state.secsEnd = video.currentTime
+  updateOutput()
+}
 
 function cropStart (evt) {
   state.cropMode = true
-  const { x, y, top, left, width, height } = video.getBoundingClientRect()
-  state.cropStartX = event.layerX
-  state.cropStartY = event.layerY
+
+  state.cropStartX = evt.layerX
+  state.cropStartY = evt.layerY
 
   cropMarker.style.left = state.cropStartX + 'px'
   cropMarker.style.top = state.cropStartY + 'px'
@@ -73,11 +99,22 @@ function cropEnd (evt) {
   cropUpdate(evt)
   if (!state.cropMode) return
   state.cropMode = false
+
+  const { width, height } = video.getBoundingClientRect()
+  const { videoHeight, videoWidth } = video
+
+  state.crop = {
+    xOffset: Math.round(linmap(0, width, 0, videoWidth, state.cropStartX)),
+    yOffset: Math.round(linmap(0, height, 0, videoHeight, state.cropStartY)),
+    width: Math.round(linmap(0, width, 0, videoWidth, state.cropWidth)),
+    height: Math.round(linmap(0, height, 0, videoHeight, state.cropHeight))
+  }
+
+  updateOutput()
 }
 
 function cropUpdate (evt) {
   if (!state.cropMode) return
-  console.log('crop update', evt)
   state.cropWidth = evt.layerX - state.cropStartX
   state.cropHeight = evt.layerY - state.cropStartY
 
@@ -87,13 +124,13 @@ function cropUpdate (evt) {
 
 function outputCommand (opts) {
   const { title, timeStart, duration, width, height, xOffset, yOffset } = opts
-  const cmd = `ffmpeg`
+
   const args = [
     '-ss',
     timeStart,
     '-i',
-    `${input.trim()}`,
-    `-filter:a`,
+    `"${title}"`,
+    '-filter:a',
     'volume=0.10',
     '-filter:v',
     `crop=${width}:${height}:${xOffset}:${yOffset}`,
@@ -103,14 +140,16 @@ function outputCommand (opts) {
     'aac',
     '-b:a',
     '192k',
-    `${title}.mp4`
+    `"${title}-cropped.mp4"`
   ]
+
+  return `ffmpeg ${args.join(' ')}`
 }
 
 function toTimeStr (secs) {
-  let hours = Math.floor(secs / 3600)
-  let minutes = Math.floor(secs / 60 - hours * 60)
-  let seconds = Math.floor(secs - minutes * 60)
+  const hours = Math.floor(secs / 3600)
+  const minutes = Math.floor(secs / 60 - hours * 60)
+  const seconds = Math.floor(secs - minutes * 60)
   let hourValue
   let minuteValue
   let secondValue
@@ -133,7 +172,7 @@ function toTimeStr (secs) {
     secondValue = seconds
   }
 
-  let mediaTime = hourValue + ':' + minuteValue + ':' + secondValue
+  const mediaTime = hourValue + ':' + minuteValue + ':' + secondValue
 
   return mediaTime
 }
