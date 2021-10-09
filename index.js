@@ -2,7 +2,10 @@ const html = require('nanohtml')
 const linmap = require('linmap')
 const urlParse = require('url-parse')
 
-const state = {
+require('./style')
+const state = require('./state')
+
+state.set({
   filename: '',
   url: '',
   cropMode: false,
@@ -11,32 +14,20 @@ const state = {
   cropWidth: 0,
   cropHeight: 0,
   crop: {}
-}
+})
 
-const video = html`<video style='display: none; width: 100%' controls></video>`
-const cropMarker = html`<div style='position: absolute; z-index: 999; opacity: 0.5; background: #f0f; pointer-events: none'></div>`
-const textarea = html`<textarea style='width: 100%; height: 200px'></textarea>`
-const downloadButton = html`<button style='display: none'></button>`
+const video = html`<video style='display: none; width: 100%' controls />`
+const cropMarker = html`<div style='position: absolute; z-index: 999; opacity: 0.5; background: #f0f; pointer-events: none' />`
+const textarea = html`<textarea style='width: 100%; height: 200px' />`
+const downloadButton = html`<button style='display: none' />`
 
 const el = html`
-  <body>
+  <div class='sans-serif white-90 pa5'>
+    ${renderHeader()}
 
-    <div>
-      <input type="text" style='width: 100%' onchange=${onYTUrlChange}></input>
-    </div>
+    ${renderInput()}
 
-    <div>
-      <label>
-        Choose video: <input type="file" onchange=${onFile}>
-      </label>
-    </div>
-
-    <div>
-      <button onclick=${setStart}>Set Start Time</button>
-      <button onclick=${setEnd}>Set End Time</button>
-      <button onclick=${toggleCrop}>Crop</button>
-      ${downloadButton}
-    </div>
+    ${renderActions()}
 
     <div style='width: 100%; position: relative;'>
       ${cropMarker}
@@ -46,8 +37,43 @@ const el = html`
     <div>
       ${textarea}
     </div>
-  </body>
+  </div>
 `
+
+function renderHeader () {
+  return html`
+    <div>
+      <h1>Video Download Helper</h1>
+    </div>
+  `
+}
+
+function renderInput () {
+  return html`
+    <div class='mv4'>
+      <label class='white-90'>
+        Video URL:
+        <input
+          type='text'
+          placeholder='https://www.youtube.com/watch?v=...'
+          class='input-reset bg-dark-gray white-90 w-100 pa2 ba b--black-20'
+          onchange=${onYTUrlChange} />
+      </label>
+    </div>
+  `
+}
+
+function renderActions () {
+  const btnClass = 'f6 grow br-pill ph3 pv2 mb2 dib white bg-hot-pink'
+  return html`
+    <div>
+      <a class=${btnClass} onclick=${setStart}>Set Start Time</a>
+      <a class=${btnClass} onclick=${setEnd}>Set End Time</a>
+      <a class=${btnClass} onclick=${toggleCrop}>Crop</a>
+      ${downloadButton}
+    </div>
+  `
+}
 
 document.body.appendChild(el)
 
@@ -70,8 +96,8 @@ function onYTUrlChange (evt) {
 
   function onMeta (meta) {
     console.log('meta', meta)
-    state.title = meta.title
-    state.url = meta.url
+    state.set('title', meta.title)
+    state.set('url', meta.url)
 
     video.src = state.url
     video.load()
@@ -100,36 +126,27 @@ function updateOutput () {
   downloadButton.style.display = 'inline'
 }
 
-function onFile (evt) {
-  const file = evt.target.files[0]
-  state.title = file.name
-
-  video.src = URL.createObjectURL(file)
-  video.load()
-  video.style.display = 'block'
-}
-
 function toggleCrop () {
   video.controls = !video.controls
 }
 
 function setStart () {
-  state.secsStart = video.currentTime
+  state.set('secsStart', video.currentTime)
   console.log('video.currentTime', toTimeStr(video.currentTime))
   console.log('video.duration', toTimeStr(video.duration))
   updateOutput()
 }
 
 function setEnd () {
-  state.secsEnd = video.currentTime
+  state.set('secsEnd', video.currentTime)
   updateOutput()
 }
 
 function cropStart (evt) {
-  state.cropMode = true
+  state.set('cropMode', true)
 
-  state.cropStartX = evt.layerX
-  state.cropStartY = evt.layerY
+  state.set('cropStartX', evt.layerX)
+  state.set('cropStartY', evt.layerY)
 
   cropMarker.style.left = state.cropStartX + 'px'
   cropMarker.style.top = state.cropStartY + 'px'
@@ -140,7 +157,7 @@ function cropStart (evt) {
 function cropEnd (evt) {
   cropUpdate(evt)
   if (!state.cropMode) return
-  state.cropMode = false
+  state.set('cropMode', false)
 
   const { width, height } = video.getBoundingClientRect()
   const { videoHeight, videoWidth } = video
@@ -157,15 +174,15 @@ function cropEnd (evt) {
 
 function cropUpdate (evt) {
   if (!state.cropMode) return
-  state.cropWidth = evt.layerX - state.cropStartX
-  state.cropHeight = evt.layerY - state.cropStartY
+  state.set('cropWidth', evt.layerX - state.cropStartX)
+  state.set('cropHeight', evt.layerY - state.cropStartY)
 
   cropMarker.style.width = state.cropWidth + 'px'
   cropMarker.style.height = state.cropHeight + 'px'
 }
 
 function outputArgs (opts) {
-  const { url, title, timeStart, duration, width, height, xOffset, yOffset, stream } = opts
+  const { url, timeStart, duration, width, height, xOffset, yOffset, stream } = opts
 
   const args = [
     '-ss',
@@ -181,16 +198,11 @@ function outputArgs (opts) {
     '-c:a',
     'aac',
     '-b:a',
-    '192k'
+    '192k',
+    '-f',
+    'matroska',
+    'pipe:1'
   ]
-
-  if (stream) {
-    args.push('-f')
-    args.push('matroska')
-    args.push('pipe:1')
-  } else {
-    args.push(`"${title}-cropped.mp4"`)
-  }
 
   return args
 }

@@ -16,13 +16,17 @@
     "cors": "^2.8.5",
     "debug": "^4.3.2",
     "express": "^4.17.1",
+    "insert-css": "^2.0.0",
     "lerp": "^1.0.3",
     "linmap": "^1.0.0",
     "loads-css": "^1.0.0",
+    "lodash.set": "^4.3.2",
+    "lodash.unset": "^4.5.2",
     "nanohtml": "^1.9.1",
     "nodemon": "^2.0.13",
     "standard": "^16.0.4",
     "url-parse": "^1.5.3",
+    "wildemitter": "^1.2.1",
     "yo-yo": "^1.4.1"
   }
 }
