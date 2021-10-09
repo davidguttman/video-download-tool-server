@@ -1,5 +1,6 @@
 const html = require('nanohtml')
 const linmap = require('linmap')
+const urlParse = require('url-parse')
 
 const state = {
   filename: '',
@@ -55,12 +56,14 @@ video.addEventListener('mouseup', cropEnd)
 video.addEventListener('mousemove', cropUpdate)
 
 function onYTUrlChange (evt) {
-  // video.src = `//localhost:3000/video?ytUrl=${encodeURIComponent(evt.target.value)}`
-  // video.load()
-  // video.play()
-  // video.style.display = 'block'
+  const orig = evt.target.value
+  const parsed = urlParse(orig, true)
+  console.log('parsed', parsed)
+  parsed.set('query', { v: parsed.query.v })
 
-  const urlMeta = `//localhost:3000/video?ytUrl=${encodeURIComponent(evt.target.value)}`
+  console.log('parsed.href', parsed.href)
+
+  const urlMeta = `//localhost:3000/video?ytUrl=${encodeURIComponent(parsed.href)}`
   window.fetch(urlMeta)
     .then(res => res.json())
     .then(data => onMeta(data))
@@ -86,13 +89,14 @@ function updateOutput () {
     width: state.crop.width,
     height: state.crop.height,
     xOffset: state.crop.xOffset,
-    yOffset: state.crop.yOffset
+    yOffset: state.crop.yOffset,
+    stream: true
   }
 
   textarea.value = 'ffmpeg ' + outputArgs(opts).join(' ')
 
   opts.stream = true
-  downloadButton.innerHTML = `<a href='//localhost:3000/ffmpeg?filename=${encodeURIComponent(state.title + '.mp4')}&args=${encodeURIComponent(outputArgs(opts).join(','))}'>Download</a>`
+  downloadButton.innerHTML = `<a href='//localhost:3000/ffmpeg?filename=${encodeURIComponent(state.title + '.mkv')}&args=${encodeURIComponent(outputArgs(opts).join(','))}'>Download</a>`
   downloadButton.style.display = 'inline'
 }
 
@@ -181,10 +185,8 @@ function outputArgs (opts) {
   ]
 
   if (stream) {
-    args.push('-movflags')
-    args.push('frag_keyframe+empty_moov')
     args.push('-f')
-    args.push('mp4')
+    args.push('matroska')
     args.push('pipe:1')
   } else {
     args.push(`"${title}-cropped.mp4"`)

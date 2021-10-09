@@ -12,7 +12,7 @@ app.get('/video', function (req, res) {
   const ytUrl = req.query.ytUrl
   debug(ytUrl)
 
-  const cmd = `youtube-dl -f 18 -J '${ytUrl}'`
+  const cmd = `yt-dlp -f 18 -J '${ytUrl}'`
   exec(cmd, function (err, stdout, stderr) {
     if (err) return console.error(err)
     if (stderr) console.error(stderr)
