@@ -12,9 +12,9 @@ state.set({
   // debug: true,
   isLoading: false,
   title: '',
-  cropMode: false,
   filename: '',
   url: '',
+  cropMode: false,
   isCropping: false,
   cropStartX: 0,
   cropStartY: 0,
@@ -199,12 +199,12 @@ function renderPlayer () {
     const { width, height } = video.getBoundingClientRect()
     const { videoHeight, videoWidth } = video
 
-    state.crop = {
+    state.set('crop', {
       xOffset: Math.round(linmap(0, width, 0, videoWidth, state.cropStartX)),
       yOffset: Math.round(linmap(0, height, 0, videoHeight, state.cropStartY)),
       width: Math.round(linmap(0, width, 0, videoWidth, state.cropWidth)),
       height: Math.round(linmap(0, height, 0, videoHeight, state.cropHeight))
-    }
+    })
   })
 
   return video
@@ -277,6 +277,20 @@ function onToggleShowFormats () {
 function onSelectFormat (format) {
   state.set('format', format)
   state.set('url', format.url)
+  resetCrop()
+  updateOutput()
+}
+
+function resetCrop () {
+  state.set({
+    cropMode: false,
+    isCropping: false,
+    cropStartX: 0,
+    cropStartY: 0,
+    cropWidth: 0,
+    cropHeight: 0,
+    crop: {}
+  })
 }
 
 function updateOutput () {
