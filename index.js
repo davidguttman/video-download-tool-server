@@ -222,8 +222,16 @@ function onYTLoad (evt) {
     .fetch(urlMeta)
     .then(res => res.json())
     .then(meta => {
+      const formats = meta.formats.filter(function (f) {
+        return f.ext === 'mp4' && f.acodec !== 'none'
+      })
+
+      const format = formats[0]
+
       state.set('title', meta.title)
-      state.set('url', meta.url)
+      state.set('formats', formats)
+      state.set('format', format)
+      state.set('url', format.url)
       state.set('isLoading', false)
     })
 }

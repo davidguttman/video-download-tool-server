@@ -10,7 +10,7 @@ app.use(cors())
 app.get('/video', function (req, res) {
   const ytUrl = req.query.ytUrl
 
-  const cmd = `yt-dlp -f 18 -J '${ytUrl}'`
+  const cmd = `yt-dlp -J '${ytUrl}'`
   exec(cmd, function (err, stdout, stderr) {
     if (err) return console.error(err)
     if (stderr) console.error(stderr)
