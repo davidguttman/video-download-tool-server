@@ -30,15 +30,20 @@ state.set({
   secsEnd: 0
 })
 
-const el = html`
-  <div class='sans-serif white-90 pa5'>
-    ${renderHeader()}
-    ${renderInput()}
-    ${renderDisplay()}
-    ${morphify(renderActions)}
-    ${morphify(renderDebug)}
-  </div>
-`
+const video = renderPlayer()
+document.body.appendChild(morphify(render))
+
+function render () {
+  return html`
+    <div class='sans-serif white-90 pa5'>
+      ${renderHeader()}
+      ${renderInput()}
+      ${renderDisplay()}
+      ${renderActions()}
+      ${renderDebug()}
+    </div>
+  `
+}
 
 function renderHeader () {
   return html`
@@ -94,9 +99,11 @@ function renderActions () {
 function renderDisplay () {
   return html`
     <div class='w-100 relative tc'>
-      ${morphify(renderLoader)}
-      ${morphify(renderCropMarker)}
-      ${renderPlayer()}
+      ${renderLoader()}
+      <div class='${!state.url ? 'dn' : ''}'>
+        ${renderCropMarker()}
+        ${video}
+      </div>
     </div>
   `
 }
@@ -118,7 +125,7 @@ function renderCropMarker () {
 }
 
 function renderPlayer () {
-  const video = html`<video style='display: none; width: 100%' controls />`
+  const video = html`<video class='w-100' controls />`
   video.isSameNode = () => true
 
   video.addEventListener('mousedown', cropStart)
@@ -137,7 +144,6 @@ function renderPlayer () {
     video.src = state.url
     video.load()
     video.play()
-    video.style.display = 'block'
   })
 
   state.on('cropMode', function () {
@@ -187,8 +193,6 @@ function renderDebug () {
     </div>
   `
 }
-
-document.body.appendChild(el)
 
 function onYTUrlChange (evt) {
   const orig = evt.target.value
