@@ -5,8 +5,12 @@ const urlParse = require('url-parse')
 require('./style')
 const state = require('./state')
 
+document.title = 'Video Download Helper'
+
 state.set({
-  debug: true,
+  // debug: true,
+  isLoading: false,
+  title: '',
   cropMode: false,
   filename: '',
   url: '',
@@ -15,15 +19,22 @@ state.set({
   cropStartY: 0,
   cropWidth: 0,
   cropHeight: 0,
-  crop: {}
+  crop: {},
+  duration: 0,
+  currentTime: 0,
+  ytUrl: '',
+  ffmpegCommand: '',
+  downloadLocation: '',
+  secsStart: 0,
+  secsEnd: 0
 })
 
 const el = html`
   <div class='sans-serif white-90 pa5'>
     ${renderHeader()}
     ${renderInput()}
-    ${renderActions()}
     ${renderVideo()}
+    ${renderActions()}
     ${renderDebug()}
   </div>
 `
@@ -37,7 +48,8 @@ function renderHeader () {
 }
 
 function renderInput () {
-  const btnClass = 'f6 grow br-pill ph3 pv2 mb2 dib white bg-hot-pink no-underline pointer ml3 ba b--black-20'
+  const btnClass =
+    'f6 grow br-pill ph3 pv2 mb2 dib white bg-hot-pink no-underline pointer ba b--black-20'
   return html`
     <div class='mv4'>
       <form action='#' onsubmit=${onYTLoad}>
@@ -46,7 +58,7 @@ function renderInput () {
           <input
             type='text'
             placeholder='https://www.youtube.com/watch?v=...'
-            class='input-reset bg-dark-gray white-90 w-80 pa2 ba b--black-20'
+            class='input-reset bg-dark-gray white-90 w-70 pa2 ba b--black-20 mr3'
             onchange=${onYTUrlChange} />
         </label>
         <button class=${btnClass} type='submit'>Load</button>
@@ -56,27 +68,57 @@ function renderInput () {
 }
 
 function renderActions () {
-  const btnClass = 'f6 grow br-pill ph3 pv2 mb2 dib white bg-hot-pink no-underline pointer'
+  const btnClass =
+    'f6 grow br-pill ph3 pv2 mb2 mr2 dib white bg-hot-pink no-underline pointer'
+
+  const cropButton = html`<a class=${btnClass} onclick=${toggleCrop}>Crop</a>`
+
+  state.on('cropMode', function (cropMode) {
+    cropButton.innerText = cropMode ? 'Show Controls' : 'Crop'
+  })
 
   const downloadButton = html`<a class=${btnClass}>Download</a>`
   downloadButton.style.display = 'none'
 
   state.on('downloadLocation', function (downloadLocation) {
     downloadButton.href = downloadLocation
-    downloadButton.style.display = 'inline'
+    downloadButton.style.display = 'inline-block'
   })
 
-  return html`
-    <div>
-      <a class=${btnClass} onclick=${setStart}>Set Start Time</a>
-      <a class=${btnClass} onclick=${setEnd}>Set End Time</a>
-      <a class=${btnClass} onclick=${toggleCrop}>Crop</a>
-      ${downloadButton}
+  const section = html`
+    <div class='dn mv3 tc'>
+      <div class='center'>
+        <a class=${btnClass} onclick=${setStart}>Set Start Time</a>
+        <a class=${btnClass} onclick=${setEnd}>Set End Time</a>
+        ${cropButton}
+        ${downloadButton}
+      </div>
     </div>
   `
+
+  state.on('url', function () {
+    section.classList.remove('dn')
+  })
+
+  return section
 }
 
 function renderVideo () {
+  const loader = html`
+    <div class='flex items-center justify-center h5'>
+      <div class='loader-inner ball-scale-ripple-multiple'>
+        <div></div>
+        <div></div>
+        <div></div>
+      </div>
+    </div>
+  `
+
+  loader.style.display = 'none'
+  state.on('isLoading', function () {
+    loader.style.display = state.isLoading ? 'flex' : 'none'
+  })
+
   const video = html`<video style='display: none; width: 100%' controls />`
   const cropMarker = html`<div style='position: absolute; z-index: 999; opacity: 0.5; background: #f0f; pointer-events: none' />`
 
@@ -133,7 +175,8 @@ function renderVideo () {
   })
 
   return html`
-    <div style='width: 100%; position: relative;'>
+    <div class='w-100 relative tc'>
+      ${loader}
       ${cropMarker}
       ${video}
     </div>
@@ -170,12 +213,18 @@ function onYTUrlChange (evt) {
 function onYTLoad (evt) {
   evt.preventDefault()
 
-  const urlMeta = `//localhost:3000/video?ytUrl=${encodeURIComponent(state.ytUrl)}`
-  window.fetch(urlMeta)
+  state.set('isLoading', true)
+  const urlMeta = `//localhost:3000/video?ytUrl=${encodeURIComponent(
+    state.ytUrl
+  )}`
+
+  window
+    .fetch(urlMeta)
     .then(res => res.json())
     .then(meta => {
       state.set('title', meta.title)
       state.set('url', meta.url)
+      state.set('isLoading', false)
     })
 }
 
@@ -188,12 +237,20 @@ function updateOutput () {
     width: state.crop.width,
     height: state.crop.height,
     xOffset: state.crop.xOffset,
-    yOffset: state.crop.yOffset,
-    stream: true
+    yOffset: state.crop.yOffset
   }
 
-  state.set('ffmpegCommand', 'ffmpeg ' + outputArgs(opts).join(' '))
-  state.set('downloadLocation', `//localhost:3000/ffmpeg?filename=${encodeURIComponent(state.title + '.mkv')}&args=${encodeURIComponent(outputArgs(opts).join(','))}`)
+  state.set(
+    'ffmpegCommand',
+    'ffmpeg ' + outputArgs({ cli: true, ...opts }).join(' ')
+  )
+
+  state.set(
+    'downloadLocation',
+    `//localhost:3000/ffmpeg?filename=${encodeURIComponent(
+      state.title + '.mkv'
+    )}&args=${encodeURIComponent(outputArgs(opts).join(','))}`
+  )
 }
 
 function toggleCrop () {
@@ -234,19 +291,31 @@ function cropUpdate (evt) {
 }
 
 function outputArgs (opts) {
-  const { url, timeStart, duration, width, height, xOffset, yOffset, stream } = opts
+  const {
+    url,
+    timeStart,
+    duration,
+    width,
+    height,
+    xOffset,
+    yOffset,
+    cli
+  } = opts
+
+  const shouldCrop = width && height
+  const shouldTrim = timeStart && duration
 
   const args = [
-    '-ss',
-    timeStart,
+    shouldTrim && '-ss',
+    shouldTrim && timeStart,
     '-i',
-    stream ? `${url}` : `"${url}"`,
+    cli ? `"${url}"` : `${url}`,
     '-filter:a',
     'volume=0.10',
-    '-filter:v',
-    `crop=${width}:${height}:${xOffset}:${yOffset}`,
-    '-t',
-    duration,
+    shouldCrop && '-filter:v',
+    shouldCrop && `crop=${width}:${height}:${xOffset}:${yOffset}`,
+    shouldTrim && '-t',
+    shouldTrim && duration,
     '-c:a',
     'aac',
     '-b:a',
@@ -262,7 +331,7 @@ function outputArgs (opts) {
 function toTimeStr (secs) {
   const hours = Math.floor(secs / 3600)
   const minutes = Math.floor(secs / 60 - hours * 60)
-  const seconds = Math.floor(secs - (minutes * 60) - (hours * 3600))
+  const seconds = Math.floor(secs - minutes * 60 - hours * 3600)
 
   return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`
 }

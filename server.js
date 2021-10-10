@@ -1,5 +1,4 @@
 const cors = require('cors')
-const debug = require('debug')('http')
 const express = require('express')
 const { exec, spawn } = require('child_process')
 
@@ -10,7 +9,6 @@ const app = express()
 app.use(cors())
 app.get('/video', function (req, res) {
   const ytUrl = req.query.ytUrl
-  debug(ytUrl)
 
   const cmd = `yt-dlp -f 18 -J '${ytUrl}'`
   exec(cmd, function (err, stdout, stderr) {
