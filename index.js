@@ -1,4 +1,5 @@
 const html = require('nanohtml')
+const morph = require('nanomorph')
 const linmap = require('linmap')
 const urlParse = require('url-parse')
 
@@ -34,8 +35,8 @@ const el = html`
     ${renderHeader()}
     ${renderInput()}
     ${renderVideo()}
-    ${renderActions()}
-    ${renderDebug()}
+    ${morphify(renderActions)}
+    ${morphify(renderDebug)}
   </div>
 `
 
@@ -71,36 +72,23 @@ function renderActions () {
   const btnClass =
     'f6 grow br-pill ph3 pv2 mb2 mr2 dib white bg-hot-pink no-underline pointer'
 
-  const cropButton = html`<a class=${btnClass} onclick=${toggleCrop}>Crop</a>`
-
-  state.on('cropMode', function (cropMode) {
-    cropButton.innerText = cropMode ? 'Show Controls' : 'Crop'
-  })
-
-  const downloadButton = html`<a class=${btnClass}>Download</a>`
-  downloadButton.style.display = 'none'
-
-  state.on('downloadLocation', function (downloadLocation) {
-    downloadButton.href = downloadLocation
-    downloadButton.style.display = 'inline-block'
-  })
-
-  const section = html`
-    <div class='dn mv3 tc'>
+  return html`
+    <div class='mv3 tc' style=${!state.url ? 'display: none' : ''}>
       <div class='center'>
         <a class=${btnClass} onclick=${setStart}>Set Start Time</a>
         <a class=${btnClass} onclick=${setEnd}>Set End Time</a>
-        ${cropButton}
-        ${downloadButton}
+        <a class=${btnClass} onclick=${toggleCrop}>
+          ${state.cropMode ? 'Show Controls' : 'Crop'}
+        </a>
+        <a
+          class=${btnClass}
+          style=${!state.downloadLocation ? 'display: none' : ''}
+          href=${state.downloadLocation}>
+          Download
+        </a>
       </div>
     </div>
   `
-
-  state.on('url', function () {
-    section.classList.remove('dn')
-  })
-
-  return section
 }
 
 function renderVideo () {
@@ -184,19 +172,14 @@ function renderVideo () {
 }
 
 function renderDebug () {
-  if (!state.debug) return
-
-  const textarea = html`
-    <textarea
-      class='code input-reset bg-dark-gray white-80 w-100 pa2 ba b--black-20 h5' />`
-
-  state.on('ffmpegCommand', function (cmd) {
-    textarea.value = cmd
-  })
+  if (!state.debug) return html`<div />`
 
   return html`
     <div>
-      ${textarea}
+      <textarea
+        class='code input-reset bg-dark-gray white-80 w-100 pa2 ba b--black-20 h5'>
+        ${state.ffmpegCommand}
+      </textarea>
     </div>
   `
 }
@@ -346,4 +329,14 @@ function toTimeStr (secs) {
 
 function pad (n) {
   return n < 10 ? '0' + n : n
+}
+
+function morphify (fn) {
+  const tree = fn()
+
+  state.on('*', function (key, val) {
+    morph(tree, fn())
+  })
+
+  return tree
 }

@@ -20,6 +20,7 @@
     "lodash.set": "^4.3.2",
     "lodash.unset": "^4.5.2",
     "nanohtml": "^1.9.1",
+    "nanomorph": "^5.4.3",
     "url-parse": "^1.5.3",
     "wildemitter": "^1.2.1"
   },
