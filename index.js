@@ -34,7 +34,7 @@ const el = html`
   <div class='sans-serif white-90 pa5'>
     ${renderHeader()}
     ${renderInput()}
-    ${renderVideo()}
+    ${renderDisplay()}
     ${morphify(renderActions)}
     ${morphify(renderDebug)}
   </div>
@@ -91,24 +91,35 @@ function renderActions () {
   `
 }
 
-function renderVideo () {
-  const loader = html`
-    <div class='flex items-center justify-center h5'>
-      <div class='loader-inner ball-scale-ripple-multiple'>
-        <div></div>
-        <div></div>
-        <div></div>
-      </div>
+function renderDisplay () {
+  return html`
+    <div class='w-100 relative tc'>
+      ${morphify(renderLoader)}
+      ${morphify(renderCropMarker)}
+      ${renderPlayer()}
     </div>
   `
+}
 
-  loader.style.display = 'none'
-  state.on('isLoading', function () {
-    loader.style.display = state.isLoading ? 'flex' : 'none'
-  })
+function renderCropMarker () {
+  return html`
+    <div
+      style='
+        position: absolute;
+        z-index: 999;
+        opacity: 0.5;
+        background: #f0f;
+        pointer-events: none;
+        left: ${state.cropStartX}px;
+        top: ${state.cropStartY}px;
+        width: ${state.cropWidth}px;
+        height: ${state.cropHeight}px'
+      />`
+}
 
+function renderPlayer () {
   const video = html`<video style='display: none; width: 100%' controls />`
-  const cropMarker = html`<div style='position: absolute; z-index: 999; opacity: 0.5; background: #f0f; pointer-events: none' />`
+  video.isSameNode = () => true
 
   video.addEventListener('mousedown', cropStart)
   video.addEventListener('mouseup', cropEnd)
@@ -133,21 +144,6 @@ function renderVideo () {
     video.controls = !state.cropMode
   })
 
-  state.on('cropStart*', function () {
-    cropMarker.style.left = state.cropStartX + 'px'
-    cropMarker.style.top = state.cropStartY + 'px'
-    cropMarker.style.width = 0 + 'px'
-    cropMarker.style.height = 0 + 'px'
-  })
-
-  state.on('cropWidth', function () {
-    cropMarker.style.width = state.cropWidth + 'px'
-  })
-
-  state.on('cropHeight', function () {
-    cropMarker.style.height = state.cropHeight + 'px'
-  })
-
   state.on('isCropping', function () {
     if (state.isCropping) return
 
@@ -162,11 +158,19 @@ function renderVideo () {
     }
   })
 
+  return video
+}
+
+function renderLoader () {
+  if (!state.isLoading) return html`<div />`
+
   return html`
-    <div class='w-100 relative tc'>
-      ${loader}
-      ${cropMarker}
-      ${video}
+    <div class='flex items-center justify-center h5'>
+      <div class='loader-inner ball-scale-ripple-multiple'>
+        <div></div>
+        <div></div>
+        <div></div>
+      </div>
     </div>
   `
 }
@@ -265,6 +269,8 @@ function cropStart (evt) {
 
   state.set('cropStartX', evt.layerX)
   state.set('cropStartY', evt.layerY)
+  state.set('cropWidth', 0)
+  state.set('cropHeight', 0)
 }
 
 function cropEnd (evt) {
