@@ -27,7 +27,9 @@ state.set({
   ffmpegCommand: '',
   downloadLocation: '',
   secsStart: 0,
-  secsEnd: 0
+  secsEnd: 0,
+  formats: [],
+  showFormats: false
 })
 
 const video = renderPlayer()
@@ -54,10 +56,9 @@ function renderHeader () {
 }
 
 function renderInput () {
-  const btnClass =
-    'f6 grow br-pill ph3 pv2 mb2 dib white bg-hot-pink no-underline pointer ba b--black-20'
+  const btnClass = 'f6 grow br-pill ph3 pv2 mb2 dib white bg-hot-pink no-underline pointer ba b--black-20'
   return html`
-    <div class='mv4'>
+    <div class='mv4 ${state.isLoading || state.url ? 'dn' : ''}'>
       <form action='#' onsubmit=${onYTLoad}>
         <label class='white-90'>
           Video URL:
@@ -74,8 +75,7 @@ function renderInput () {
 }
 
 function renderActions () {
-  const btnClass =
-    'f6 grow br-pill ph3 pv2 mb2 mr2 dib white bg-hot-pink no-underline pointer'
+  const btnClass = 'f6 grow br-pill ph3 pv2 mb2 mr2 dib white bg-hot-pink no-underline pointer'
 
   return html`
     <div class='mv3 tc' style=${!state.url ? 'display: none' : ''}>
@@ -98,12 +98,55 @@ function renderActions () {
 
 function renderDisplay () {
   return html`
-    <div class='w-100 relative tc'>
+
+    <div>
       ${renderLoader()}
-      <div class='${!state.url ? 'dn' : ''}'>
-        ${renderCropMarker()}
-        ${video}
+
+      ${renderMeta()}
+
+      <div class='relative tc'>
+        <div class='${!state.url ? 'dn' : ''}'>
+          ${renderCropMarker()}
+          ${video}
+        </div>
       </div>
+    </div>
+  `
+}
+
+function renderMeta () {
+  // ▼ ◀
+  if (!state.title || !state.formats.length) return blank()
+
+  return html`
+    <div class='flex justify-between items-center mb2'>
+      <h2 class='f4 white'>${state.title}</h2>
+      <div class='tr'>
+        <a class='gray pb1 pointer' onclick=${onToggleShowFormats}>
+          ${state.formats.length} Formats ${state.showFormats
+    ? '\u25BC'
+    : '\u25C0'}
+        </a>
+        <div class=${!state.showFormats ? 'dn' : ''}>
+          ${state.formats.map(renderFormat)}
+        </div>
+      </div>
+
+    </div>
+  `
+}
+
+function renderFormat (format) {
+  const selectedFormat = state.format || {}
+
+  return html`
+    <div>
+      <a class='pointer hover-hot-pink' onclick=${() => onSelectFormat(format)}>
+        <span class='hot-pink'>
+          ${selectedFormat.format_note === format.format_note ? '\u2713 ' : ''}
+        </span>
+        ${format.format_note}
+      </a>
     </div>
   `
 }
@@ -168,7 +211,7 @@ function renderPlayer () {
 }
 
 function renderLoader () {
-  if (!state.isLoading) return html`<div />`
+  if (!state.isLoading) return blank()
 
   return html`
     <div class='flex items-center justify-center h5'>
@@ -182,7 +225,7 @@ function renderLoader () {
 }
 
 function renderDebug () {
-  if (!state.debug) return html`<div />`
+  if (!state.debug) return blank()
 
   return html`
     <div>
@@ -202,7 +245,7 @@ function onYTUrlChange (evt) {
 }
 
 function onYTLoad (evt) {
-  evt.preventDefault()
+  evt && evt.preventDefault()
 
   state.set('isLoading', true)
   const urlMeta = `//localhost:3000/video?ytUrl=${encodeURIComponent(
@@ -225,6 +268,15 @@ function onYTLoad (evt) {
       state.set('url', format.url)
       state.set('isLoading', false)
     })
+}
+
+function onToggleShowFormats () {
+  state.set('showFormats', !state.showFormats)
+}
+
+function onSelectFormat (format) {
+  state.set('format', format)
+  state.set('url', format.url)
 }
 
 function updateOutput () {
@@ -345,8 +397,13 @@ function morphify (fn) {
   const tree = fn()
 
   state.on('*', function (key, val) {
+    if (key === 'currentTime') return
     morph(tree, fn())
   })
 
   return tree
+}
+
+function blank () {
+  return html`<span />`
 }
