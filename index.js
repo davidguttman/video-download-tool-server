@@ -8,7 +8,7 @@ const state = require('./state')
 
 const API_HOST = 'https://video-download-tool.herokuapp.com'
 
-document.title = 'Video Download Helper'
+document.title = 'Video Download Tool'
 
 state.set({
   // debug: true,
