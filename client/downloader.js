@@ -1,6 +1,5 @@
 const html = require('nanohtml')
 const morph = require('nanomorph')
-const linmap = require('linmap')
 const urlParse = require('url-parse')
 
 const api = require('./api')
@@ -8,10 +7,8 @@ const state = require('./state')
 const ffmpeg = require('./ffmpeg')
 const { toTimeStr } = require('./util')
 
-const video = renderPlayer()
-
 const initialState = {
-  debug: true,
+  // debug: true,
   isLoading: false,
   title: '',
   filename: '',
@@ -26,14 +23,18 @@ const initialState = {
   duration: 0,
   currentTime: 0,
   ytUrl: '',
-  ffmpegCommand: '',
-  downloadLocation: '',
   reduceVolume: false,
   secsStart: 0,
   secsEnd: 0,
   formats: [],
   showFormats: false
 }
+
+const video = require('./video')({
+  onCrop: crop => state.set('crop', crop),
+  onDuration: duration => state.set('duration', duration),
+  onTimeUpdate: currentTime => state.set('currentTime', currentTime)
+})
 
 module.exports = function downloader () {
   state.set(initialState)
@@ -84,29 +85,32 @@ function renderInput () {
 function renderActions () {
   const btnClass = 'f6 grow br-pill ph3 pv2 mb2 mr2 dib white bg-hot-pink no-underline pointer hover-bg-pink'
 
+  const ffOpts = ffmpegOpts()
+
+  const downloadUrl = ffOpts
+    ? api.getDownloadUrl({ title: state.title, args: ffmpeg.getArgs(ffOpts) })
+    : state.url
+
   return html`
     <div class='mv3 tc' style=${!state.url ? 'display: none' : ''}>
       <div class='center'>
         <a class=${btnClass} onclick=${setStart}>
-          ${state.secsStart
-            ? `Start: ${toTimeStr(state.secsStart)}`
-            : 'Set Start Time'}
+          ${state.secsStart && state.secsStart !== 0
+    ? `Start: ${toTimeStr(state.secsStart)}`
+    : 'Set Start Time'}
         </a>
         <a class=${btnClass} onclick=${setEnd}>
-          ${state.secsEnd
-            ? `End: ${toTimeStr(state.secsEnd)}`
-            : 'Set End Time'}
+          ${state.secsEnd && state.secsEnd !== state.duration ? `End: ${toTimeStr(state.secsEnd)}` : 'Set End Time'}
         </a>
         <a class=${btnClass} onclick=${toggleCrop}>
           ${state.cropMode ? 'Show Controls' : 'Crop'}
         </a>
         <a class=${btnClass} onclick=${toggleReduceVolume}>
-          Reduce Volume ${state.reduceVolume ? '☑' : '☐'}
+          Reduce Volume ${state.reduceVolume ? '\u2611' : '\u2610'}
         </a>
         <a
           class=${btnClass}
-          style=${!state.downloadLocation ? 'display: none' : ''}
-          href=${state.downloadLocation}>
+          href=${downloadUrl}>
           Download
         </a>
       </div>
@@ -119,14 +123,9 @@ function renderDisplay () {
 
     <div>
       ${renderLoader()}
-
       ${renderMeta()}
-
-      <div class='relative tc'>
-        <div class='${!state.url ? 'dn' : ''}'>
-          ${renderCropMarker()}
-          ${video}
-        </div>
+      <div class='${!state.url ? 'dn' : ''}'>
+        ${video.el}
       </div>
     </div>
   `
@@ -169,66 +168,6 @@ function renderFormat (format) {
   `
 }
 
-function renderCropMarker () {
-  return html`
-    <div
-      style='
-        position: absolute;
-        z-index: 999;
-        opacity: 0.5;
-        background: #f0f;
-        pointer-events: none;
-        left: ${state.cropStartX}px;
-        top: ${state.cropStartY}px;
-        width: ${state.cropWidth}px;
-        height: ${state.cropHeight}px'
-      />`
-}
-
-function renderPlayer () {
-  const video = html`<video class='w-100' controls />`
-  video.isSameNode = () => true
-
-  video.addEventListener('mousedown', cropStart)
-  video.addEventListener('mouseup', cropEnd)
-  video.addEventListener('mousemove', cropUpdate)
-
-  video.addEventListener('durationchange', function () {
-    state.set('duration', video.duration)
-  })
-
-  video.addEventListener('timeupdate', function () {
-    state.set('currentTime', video.currentTime)
-  })
-
-  state.on('url', function () {
-    if (!state.url) return
-    video.src = state.url
-    video.load()
-    video.play()
-  })
-
-  state.on('cropMode', function () {
-    video.controls = !state.cropMode
-  })
-
-  state.on('isCropping', function () {
-    if (state.isCropping) return
-
-    const { width, height } = video.getBoundingClientRect()
-    const { videoHeight, videoWidth } = video
-
-    state.set('crop', {
-      xOffset: Math.round(linmap(0, width, 0, videoWidth, state.cropStartX)),
-      yOffset: Math.round(linmap(0, height, 0, videoHeight, state.cropStartY)),
-      width: Math.round(linmap(0, width, 0, videoWidth, state.cropWidth)),
-      height: Math.round(linmap(0, height, 0, videoHeight, state.cropHeight))
-    })
-  })
-
-  return video
-}
-
 function renderLoader () {
   if (!state.isLoading) return blank()
 
@@ -244,13 +183,13 @@ function renderLoader () {
 }
 
 function renderDebug () {
-  if (!state.debug) return blank()
+  if (!state.debug || !state.url) return blank()
 
   return html`
     <div>
       <textarea
         class='code input-reset bg-dark-gray white-80 w-100 pa2 ba b--black-20 h5'>
-        ${state.ffmpegCommand}
+        ${'ffmpeg ' + ffmpeg.getArgs({ cli: true, ...ffmpegOpts() }).join(' ')}
       </textarea>
     </div>
   `
@@ -267,16 +206,17 @@ function onYTLoad (evt) {
   evt && evt.preventDefault()
 
   state.set('isLoading', true)
-  api.getFormats(state.ytUrl)
-    .then(meta => {
-      const format = meta.formats[0]
+  api.getFormats(state.ytUrl).then(meta => {
+    const format = meta.formats[0]
 
-      state.set('title', meta.title)
-      state.set('formats', meta.formats)
-      state.set('format', format)
-      state.set('url', format.url)
-      state.set('isLoading', false)
-    })
+    state.set('title', meta.title)
+    state.set('formats', meta.formats)
+    state.set('format', format)
+    state.set('url', format.url)
+    state.set('isLoading', false)
+
+    video.updateUrl(format.url)
+  })
 }
 
 function onToggleShowFormats () {
@@ -286,24 +226,19 @@ function onToggleShowFormats () {
 function onSelectFormat (format) {
   state.set('format', format)
   state.set('url', format.url)
-  resetCrop()
-  updateOutput()
+  video.resetCrop()
 }
 
-function resetCrop () {
-  state.set({
-    cropMode: false,
-    isCropping: false,
-    cropStartX: 0,
-    cropStartY: 0,
-    cropWidth: 0,
-    cropHeight: 0,
-    crop: {}
-  })
-}
+function ffmpegOpts () {
+  const anyMods = state.secsStart ||
+    state.secsEnd ||
+    state.crop.width ||
+    state.cropHeight ||
+    state.reduceVolume
 
-function updateOutput () {
-  const opts = {
+  if (!anyMods) return false
+
+  return {
     url: state.url,
     title: state.title,
     timeStart: toTimeStr(state.secsStart),
@@ -314,20 +249,11 @@ function updateOutput () {
     reduceVolume: state.reduceVolume,
     yOffset: state.crop.yOffset
   }
-
-  state.set(
-    'ffmpegCommand',
-    'ffmpeg ' + ffmpeg.getArgs({ cli: true, ...opts }).join(' ')
-  )
-
-  state.set('downloadLocation', api.getDownloadUrl({
-    title: state.title,
-    args: ffmpeg.getArgs(opts)
-  }))
 }
 
 function toggleCrop () {
   state.set('cropMode', !state.cropMode)
+  state.cropMode ? video.showCrop() : video.hideCrop()
 }
 
 function toggleReduceVolume () {
@@ -336,37 +262,12 @@ function toggleReduceVolume () {
 
 function setStart () {
   state.set('secsStart', state.currentTime)
-  if (state.secsEnd < state.secsStart) state.set('secsEnd', state.secsStart)
-  updateOutput()
+  if (state.secsEnd < state.secsStart) state.set('secsEnd', state.duration)
 }
 
 function setEnd () {
   state.set('secsEnd', state.currentTime)
-  if (state.secsStart > state.secsEnd) state.set('secsStart', state.secsEnd)
-  updateOutput()
-}
-
-function cropStart (evt) {
-  state.set('isCropping', true)
-
-  state.set('cropStartX', evt.layerX)
-  state.set('cropStartY', evt.layerY)
-  state.set('cropWidth', 0)
-  state.set('cropHeight', 0)
-}
-
-function cropEnd (evt) {
-  cropUpdate(evt)
-  if (!state.isCropping) return
-  state.set('isCropping', false)
-
-  updateOutput()
-}
-
-function cropUpdate (evt) {
-  if (!state.isCropping) return
-  state.set('cropWidth', evt.layerX - state.cropStartX)
-  state.set('cropHeight', evt.layerY - state.cropStartY)
+  if (state.secsStart > state.secsEnd) state.set('secsStart', 0)
 }
 
 function blank () {
