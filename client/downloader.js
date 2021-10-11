@@ -3,15 +3,15 @@ const morph = require('nanomorph')
 const linmap = require('linmap')
 const urlParse = require('url-parse')
 
+const api = require('./api')
 const state = require('./state')
+const ffmpeg = require('./ffmpeg')
 const { toTimeStr } = require('./util')
-
-const API_HOST = 'https://video-download-tool.herokuapp.com'
 
 const video = renderPlayer()
 
 const initialState = {
-  // debug: true,
+  debug: true,
   isLoading: false,
   title: '',
   filename: '',
@@ -138,7 +138,7 @@ function renderMeta () {
 
   return html`
     <div class='flex justify-between items-center mb2'>
-      <h2 class='f4 white'>${state.title}</h2>
+      <h2 class='f4 white w-80'>${state.title}</h2>
       <div class='tr'>
         <a class='gray pb1 pointer' onclick=${onToggleShowFormats}>
           ${state.formats.length} Formats ${state.showFormats
@@ -267,22 +267,12 @@ function onYTLoad (evt) {
   evt && evt.preventDefault()
 
   state.set('isLoading', true)
-  const urlMeta = `${API_HOST}/video?ytUrl=${encodeURIComponent(
-    state.ytUrl
-  )}`
-
-  window
-    .fetch(urlMeta)
-    .then(res => res.json())
+  api.getFormats(state.ytUrl)
     .then(meta => {
-      const formats = meta.formats.filter(function (f) {
-        return f.ext === 'mp4' && f.acodec !== 'none'
-      })
-
-      const format = formats[0]
+      const format = meta.formats[0]
 
       state.set('title', meta.title)
-      state.set('formats', formats)
+      state.set('formats', meta.formats)
       state.set('format', format)
       state.set('url', format.url)
       state.set('isLoading', false)
@@ -321,20 +311,19 @@ function updateOutput () {
     width: state.crop.width,
     height: state.crop.height,
     xOffset: state.crop.xOffset,
+    reduceVolume: state.reduceVolume,
     yOffset: state.crop.yOffset
   }
 
   state.set(
     'ffmpegCommand',
-    'ffmpeg ' + outputArgs({ cli: true, ...opts }).join(' ')
+    'ffmpeg ' + ffmpeg.getArgs({ cli: true, ...opts }).join(' ')
   )
 
-  state.set(
-    'downloadLocation',
-    `${API_HOST}/ffmpeg?filename=${encodeURIComponent(
-      state.title + '.mkv'
-    )}&args=${encodeURIComponent(outputArgs(opts).join(','))}`
-  )
+  state.set('downloadLocation', api.getDownloadUrl({
+    title: state.title,
+    args: ffmpeg.getArgs(opts)
+  }))
 }
 
 function toggleCrop () {
@@ -348,8 +337,6 @@ function toggleReduceVolume () {
 function setStart () {
   state.set('secsStart', state.currentTime)
   if (state.secsEnd < state.secsStart) state.set('secsEnd', state.secsStart)
-  console.log('state.currentTime', toTimeStr(state.currentTime))
-  console.log('state.duration', toTimeStr(state.duration))
   updateOutput()
 }
 
@@ -380,45 +367,6 @@ function cropUpdate (evt) {
   if (!state.isCropping) return
   state.set('cropWidth', evt.layerX - state.cropStartX)
   state.set('cropHeight', evt.layerY - state.cropStartY)
-}
-
-function outputArgs (opts) {
-  const {
-    url,
-    timeStart,
-    duration,
-    width,
-    height,
-    xOffset,
-    yOffset,
-    cli
-  } = opts
-
-  const shouldCrop = width && height
-  const shouldTrim = timeStart && duration
-  const shouldVolume = state.reduceVolume
-
-  const args = [
-    shouldTrim && '-ss',
-    shouldTrim && timeStart,
-    '-i',
-    cli ? `"${url}"` : `${url}`,
-    shouldVolume && '-filter:a',
-    shouldVolume && 'volume=0.10',
-    shouldCrop && '-filter:v',
-    shouldCrop && `crop=${width}:${height}:${xOffset}:${yOffset}`,
-    shouldTrim && '-t',
-    shouldTrim && duration,
-    '-c:a',
-    'aac',
-    '-b:a',
-    '192k',
-    '-f',
-    'matroska',
-    'pipe:1'
-  ]
-
-  return args.filter(a => a)
 }
 
 function blank () {
