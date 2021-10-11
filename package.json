@@ -5,9 +5,9 @@
   "main": "index.js",
   "scripts": {
     "start": "npm run start-server & npm run start-client",
-    "start-server": "nodemon server.js",
-    "start-client": "budo index.js --live",
-    "build": "browserify index.js | terser -mc > dist/index.js"
+    "start-server": "nodemon server/index.js",
+    "start-client": "budo client/index.js --live",
+    "build": "browserify client/index.js | terser -mc > dist/index.js"
   },
   "keywords": [],
   "author": "David Guttman <david@guttman.io> (http://davidguttman.com/)",

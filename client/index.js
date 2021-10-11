@@ -53,7 +53,7 @@ function render () {
 function renderHeader () {
   return html`
     <div>
-      <h1>Video Download Helper</h1>
+      <h1>Video Download Tool</h1>
     </div>
   `
 }
