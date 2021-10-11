@@ -8,6 +8,7 @@ const app = express()
 
 app.use(cors())
 app.get('/video', function (req, res) {
+  console.log(req.url)
   const ytUrl = req.query.ytUrl
 
   const cmd = `yt-dlp -J '${ytUrl}'`
@@ -21,6 +22,7 @@ app.get('/video', function (req, res) {
 })
 
 app.get('/ffmpeg', function (req, res) {
+  console.log(req.url)
   const { args, filename } = req.query
   res.setHeader('Content-disposition', `attachment; filename=${filename}`)
   res.setHeader('content-type', 'video/mp4')
