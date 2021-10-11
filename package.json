@@ -6,7 +6,8 @@
   "scripts": {
     "start": "npm run start-server & npm run start-client",
     "start-server": "nodemon server.js",
-    "start-client": "budo index.js --live"
+    "start-client": "budo index.js --live",
+    "build": "browserify index.js | terser -mc > dist/index.js"
   },
   "keywords": [],
   "author": "David Guttman <david@guttman.io> (http://davidguttman.com/)",
@@ -25,8 +26,10 @@
     "wildemitter": "^1.2.1"
   },
   "devDependencies": {
+    "browserify": "^17.0.0",
     "budo": "^11.6.4",
     "nodemon": "^2.0.13",
-    "standard": "^16.0.4"
+    "standard": "^16.0.4",
+    "terser": "^5.9.0"
   }
 }

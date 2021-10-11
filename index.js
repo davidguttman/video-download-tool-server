@@ -6,6 +6,8 @@ const urlParse = require('url-parse')
 require('./style')
 const state = require('./state')
 
+const API_HOST = 'https://video-download-tool.herokuapp.com'
+
 document.title = 'Video Download Helper'
 
 state.set({
@@ -26,6 +28,7 @@ state.set({
   ytUrl: '',
   ffmpegCommand: '',
   downloadLocation: '',
+  reduceVolume: false,
   secsStart: 0,
   secsEnd: 0,
   formats: [],
@@ -56,7 +59,7 @@ function renderHeader () {
 }
 
 function renderInput () {
-  const btnClass = 'f6 grow br-pill ph3 pv2 mb2 dib white bg-hot-pink no-underline pointer ba b--black-20'
+  const btnClass = 'f6 grow br-pill ph3 pv2 mb2 dib white bg-hot-pink no-underline pointer ba b--black-20 hover-bg-pink'
   return html`
     <div class='mv4 ${state.isLoading || state.url ? 'dn' : ''}'>
       <form action='#' onsubmit=${onYTLoad}>
@@ -75,15 +78,26 @@ function renderInput () {
 }
 
 function renderActions () {
-  const btnClass = 'f6 grow br-pill ph3 pv2 mb2 mr2 dib white bg-hot-pink no-underline pointer'
+  const btnClass = 'f6 grow br-pill ph3 pv2 mb2 mr2 dib white bg-hot-pink no-underline pointer hover-bg-pink'
 
   return html`
     <div class='mv3 tc' style=${!state.url ? 'display: none' : ''}>
       <div class='center'>
-        <a class=${btnClass} onclick=${setStart}>Set Start Time</a>
-        <a class=${btnClass} onclick=${setEnd}>Set End Time</a>
+        <a class=${btnClass} onclick=${setStart}>
+          ${state.secsStart
+            ? `Start: ${toTimeStr(state.secsStart)}`
+            : 'Set Start Time'}
+        </a>
+        <a class=${btnClass} onclick=${setEnd}>
+          ${state.secsEnd
+            ? `End: ${toTimeStr(state.secsEnd)}`
+            : 'Set End Time'}
+        </a>
         <a class=${btnClass} onclick=${toggleCrop}>
           ${state.cropMode ? 'Show Controls' : 'Crop'}
+        </a>
+        <a class=${btnClass} onclick=${toggleReduceVolume}>
+          Reduce Volume ${state.reduceVolume ? '☑' : '☐'}
         </a>
         <a
           class=${btnClass}
@@ -248,7 +262,7 @@ function onYTLoad (evt) {
   evt && evt.preventDefault()
 
   state.set('isLoading', true)
-  const urlMeta = `//localhost:3000/video?ytUrl=${encodeURIComponent(
+  const urlMeta = `${API_HOST}/video?ytUrl=${encodeURIComponent(
     state.ytUrl
   )}`
 
@@ -312,7 +326,7 @@ function updateOutput () {
 
   state.set(
     'downloadLocation',
-    `//localhost:3000/ffmpeg?filename=${encodeURIComponent(
+    `${API_HOST}/ffmpeg?filename=${encodeURIComponent(
       state.title + '.mkv'
     )}&args=${encodeURIComponent(outputArgs(opts).join(','))}`
   )
@@ -322,8 +336,13 @@ function toggleCrop () {
   state.set('cropMode', !state.cropMode)
 }
 
+function toggleReduceVolume () {
+  state.set('reduceVolume', !state.reduceVolume)
+}
+
 function setStart () {
   state.set('secsStart', state.currentTime)
+  if (state.secsEnd < state.secsStart) state.set('secsEnd', state.secsStart)
   console.log('state.currentTime', toTimeStr(state.currentTime))
   console.log('state.duration', toTimeStr(state.duration))
   updateOutput()
@@ -331,6 +350,7 @@ function setStart () {
 
 function setEnd () {
   state.set('secsEnd', state.currentTime)
+  if (state.secsStart > state.secsEnd) state.set('secsStart', state.secsEnd)
   updateOutput()
 }
 
@@ -371,14 +391,15 @@ function outputArgs (opts) {
 
   const shouldCrop = width && height
   const shouldTrim = timeStart && duration
+  const shouldVolume = state.reduceVolume
 
   const args = [
     shouldTrim && '-ss',
     shouldTrim && timeStart,
     '-i',
     cli ? `"${url}"` : `${url}`,
-    '-filter:a',
-    'volume=0.10',
+    shouldVolume && '-filter:a',
+    shouldVolume && 'volume=0.10',
     shouldCrop && '-filter:v',
     shouldCrop && `crop=${width}:${height}:${xOffset}:${yOffset}`,
     shouldTrim && '-t',
@@ -392,7 +413,7 @@ function outputArgs (opts) {
     'pipe:1'
   ]
 
-  return args
+  return args.filter(a => a)
 }
 
 function toTimeStr (secs) {
