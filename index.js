@@ -7,11 +7,16 @@ const PORT = process.env.PORT || 3000
 const app = express()
 
 app.use(cors())
+app.get('/', home)
 app.get('/video', video)
 app.get('/ffmpeg', ffmpeg)
 
 app.listen(PORT)
 console.log('Server listening on port', PORT)
+
+function home (req, res) {
+  res.redirect(`https://videodownloadtool.io/?host=${req.headers.host}`)
+}
 
 function video (req, res) {
   console.log(req.url)
