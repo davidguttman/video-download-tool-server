@@ -42,4 +42,4 @@ ENV NODE_ENV=production
 
 EXPOSE 3000
 
-CMD [ "node", "server/index.js" ]
+CMD [ "node", "index.js" ]

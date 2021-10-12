@@ -7,7 +7,13 @@ const PORT = process.env.PORT || 3000
 const app = express()
 
 app.use(cors())
-app.get('/video', function (req, res) {
+app.get('/video', video)
+app.get('/ffmpeg', ffmpeg)
+
+app.listen(PORT)
+console.log('Server listening on port', PORT)
+
+function video (req, res) {
   console.log(req.url)
   const ytUrl = req.query.ytUrl
 
@@ -19,21 +25,15 @@ app.get('/video', function (req, res) {
     const meta = JSON.parse(stdout)
     res.json(meta)
   })
-})
+}
 
-app.get('/ffmpeg', function (req, res) {
+function ffmpeg (req, res) {
   console.log(req.url)
   const { args, filename } = req.query
   res.setHeader('Content-disposition', `attachment; filename=${filename}`)
-  res.setHeader('content-type', 'video/mp4')
   const child = spawn('ffmpeg', args.split(','))
 
   child.stdout.pipe(res)
-  console.log('ffmpeg', args.split(',').join(' '))
   child.stderr.on('data', d => process.stderr.write(d))
   res.on('close', () => child.kill())
-  console.log(args.split(','))
-})
-
-app.listen(PORT)
-console.log('Server listening on port', PORT)
+}
