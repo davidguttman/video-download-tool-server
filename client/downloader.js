@@ -3,7 +3,7 @@ const morph = require('nanomorph')
 const urlParse = require('url-parse')
 
 const api = require('./api')
-const state = require('./state')
+const state = require('./state')()
 const ffmpeg = require('./ffmpeg')
 const { toTimeStr } = require('./util')
 
@@ -11,14 +11,8 @@ const initialState = {
   // debug: true,
   isLoading: false,
   title: '',
-  filename: '',
   url: '',
   cropMode: false,
-  isCropping: false,
-  cropStartX: 0,
-  cropStartY: 0,
-  cropWidth: 0,
-  cropHeight: 0,
   crop: {},
   duration: 0,
   currentTime: 0,
@@ -233,7 +227,7 @@ function ffmpegOpts () {
   const anyMods = state.secsStart ||
     state.secsEnd ||
     state.crop.width ||
-    state.cropHeight ||
+    state.crop.height ||
     state.reduceVolume
 
   if (!anyMods) return false

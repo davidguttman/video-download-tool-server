@@ -2,7 +2,7 @@ const html = require('nanohtml')
 const morph = require('nanomorph')
 const linmap = require('linmap')
 
-const state = require('./state')
+const state = require('./state')()
 
 module.exports = function renderPlayer ({ onCrop, onDuration, onTimeUpdate }) {
   const video = html`<video class='w-100' controls />`
