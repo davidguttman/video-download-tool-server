@@ -1,0 +1,8 @@
+spec:
+  name: video-download-tool-server
+  services:
+  - name: web
+    git:
+      branch: main
+      repo_clone_url: https://github.com/davidguttman/video-download-tool-server.git
+    dockerfile_path: Dockerfile
