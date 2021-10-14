@@ -29,6 +29,10 @@ The simplest way to get your own usable server is to use the 1-click deploy to e
 
 ## Install
 
+If you'd like to run this without Docker:
+
+First, install [`yt-dlp`](https://github.com/yt-dlp/yt-dlp) and make sure it's accessible on your path. Then,
+
 ```sh
 npm install
 ```
