@@ -2,5 +2,6 @@
   "name": "video-download-tool-server",
   "description": "A simple yt-dlp and ffmpeg server",
   "repository": "https://github.com/davidguttman/video-download-tool-server",
+  "stack": "container",
   "keywords": ["video", "ffmpeg", "yt-dlp"]
 }
