@@ -1,10 +1,13 @@
 const cors = require('cors')
 const express = require('express')
+const http = require('http')
 const { exec, spawn } = require('child_process')
 
 const PORT = process.env.PORT || 3000
 
 const app = express()
+
+module.exports = app
 
 app.use(cors())
 app.get('/', home)
@@ -24,8 +27,7 @@ function video (req, res) {
 
   const cmd = `yt-dlp -J '${ytUrl}'`
   exec(cmd, function (err, stdout, stderr) {
-    if (err) return console.error(err)
-    if (stderr) console.error(stderr)
+    if (err || stderr) return onError(res, err || stderr)
 
     const meta = JSON.parse(stdout)
     res.json(meta)
@@ -41,4 +43,29 @@ function ffmpeg (req, res) {
   child.stdout.pipe(res)
   child.stderr.on('data', d => process.stderr.write(d))
   res.on('close', () => child.kill())
+}
+
+function onError (res, err) {
+  res.statusCode = err.statusCode || 500
+  logError(res, err)
+
+  const body = {
+    error: err.message || http.STATUS_CODES[res.statusCode]
+  }
+
+  if (err instanceof SyntaxError) {
+    body.detail = err.detail
+    body.name = err.name
+  }
+
+  res.json(body)
+}
+
+function logError (res, err) {
+  const logType = res.statusCode >= 500 ? 'error' : 'warn'
+
+  console[logType]({
+    err: err,
+    statusCode: res.statusCode
+  }, err.message)
 }

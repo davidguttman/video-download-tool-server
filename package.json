@@ -5,17 +5,20 @@
   "main": "index.js",
   "scripts": {
     "dev": "nodemon server/index.js",
-    "start": "node index.js"
+    "start": "node index.js",
+    "test": "ava"
   },
   "keywords": [],
   "author": "David Guttman <david@guttman.io> (http://davidguttman.com/)",
   "license": "MIT",
   "dependencies": {
+    "ava": "^3.15.0",
     "cors": "^2.8.5",
     "express": "^4.17.1"
   },
   "devDependencies": {
     "nodemon": "^2.0.13",
-    "standard": "^16.0.4"
+    "standard": "^16.0.4",
+    "supertest": "^6.1.6"
   }
 }
