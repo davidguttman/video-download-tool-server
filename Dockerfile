@@ -11,7 +11,8 @@ RUN set -x && \
     apt-get install -y --no-install-recommends git make build-essential ffmpeg python3 python3-pip python3-setuptools && \
     git config --global advice.detachedHead false && \
     # Install ytdl
-    python3 -m pip install --upgrade git+https://github.com/yt-dlp/yt-dlp.git@release && \
+    # python3 -m pip install --upgrade git+https://github.com/yt-dlp/yt-dlp.git@release && \
+    python3 -m pip install -U yt-dlp && \
     # git clone https://github.com/yt-dlp/yt-dlp.git /src/yt-dlp && \
     # pushd /src/yt-dlp && \
     # git checkout "release" && \
