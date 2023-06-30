@@ -23,7 +23,7 @@ function video (req, res) {
   const ytUrl = req.query.ytUrl
 
   const cmd = `yt-dlp -J '${ytUrl}'`
-  exec(cmd, function (err, stdout, stderr) {
+  exec(cmd, { maxBuffer: 1e7 }, function (err, stdout, stderr) {
     if (err) return console.error(err)
     if (stderr) console.error(stderr)
 
