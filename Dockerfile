@@ -1,4 +1,4 @@
-FROM node:16
+FROM node:18
 
 ENV LC_ALL=C.UTF-8 \
     LANG=C.UTF-8 \
