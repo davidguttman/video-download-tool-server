@@ -1,4 +1,4 @@
-FROM node:18
+FROM node:20
 
 ENV LC_ALL=C.UTF-8 \
     LANG=C.UTF-8 \
@@ -8,21 +8,14 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 RUN set -x && \
     apt-get update -y && \
-    apt-get install -y --no-install-recommends git make build-essential ffmpeg python3 python3-pip python3-setuptools && \
+    apt-get install -y --no-install-recommends git make build-essential ffmpeg wget python3 python3-pip python3-setuptools && \
     git config --global advice.detachedHead false && \
-    # Install ytdl
-    python3 -m pip install --break-system-packages -U yt-dlp && \
-    # Create /config directory
-    mkdir -p /config && \
-    # Clean-up.
+    wget https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp && \
+    chmod a+rx yt-dlp && \
+    mv yt-dlp /usr/local/bin/ && \
     apt-get autoremove -y && \
     apt-get clean -y && \
     rm -rf /var/lib/apt/lists/* /tmp/* /src
-
-# # Copy init script, set workdir & entrypoint
-# COPY init /init
-# WORKDIR /workdir
-# ENTRYPOINT ["/init"]
 
 WORKDIR /app
 
