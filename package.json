@@ -12,10 +12,10 @@
   "license": "MIT",
   "dependencies": {
     "cors": "^2.8.5",
-    "express": "^4.17.1"
+    "express": "^4.21.2"
   },
   "devDependencies": {
-    "nodemon": "^2.0.13",
-    "standard": "^16.0.4"
+    "nodemon": "^3.1.9",
+    "standard": "^17.1.2"
   }
 }
